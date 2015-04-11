@@ -1,0 +1,10 @@
+*.exe
+*.elf
+*.o
+*.hex
+*.gb
+*.bak
+*.brd-bak
+*.000
+*.lst
+
