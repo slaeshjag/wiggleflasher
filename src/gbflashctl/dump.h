@@ -6,6 +6,6 @@
 #include <stdbool.h>
 
 bool mbc_identify();
-bool mbc_dump_cart(FILE *fp);
+bool mbc_dump_cart(FILE *fp, FILE *compare);
 
 #endif

@@ -2,6 +2,7 @@
 #include "command.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 enum MBCRomStrategy {
@@ -136,9 +137,9 @@ static void mbc_set_bank(int bank) {
 }
 
 
-bool mbc_dump_cart(FILE *fp) {
+bool mbc_dump_cart(FILE *fp, FILE *compare) {
 	int i, j;
-	uint8_t buff[256];
+	uint8_t buff[256], comp_buff[256];
 
 	if (!mbc_rom_strategy[mbc_state.mbc]) {
 		fprintf(stderr, "MBC 0x%X unsupported\n", mbc_state.mbc);
@@ -146,7 +147,7 @@ bool mbc_dump_cart(FILE *fp) {
 	}
 
 	for (i = 0; i < mbc_state.banks; i++) {
-		fprintf(stdout, "Reading bank %.3i/%.3i...\r", i, mbc_state.banks);
+		fprintf(stdout, "Reading bank %.3i/%.3i...\r", i + 1, mbc_state.banks);
 		fflush(stdout);
 		mbc_set_bank(i);
 		if (!i)
@@ -159,11 +160,30 @@ bool mbc_dump_cart(FILE *fp) {
 		for (j = 0; j < 64; j++) {
 			if (!command_read_256(buff))
 				goto read_error;
-			fwrite(buff, 256, 1, fp);
+			if (fp)
+				fwrite(buff, 256, 1, fp);
+			if (compare) {
+				if (fread(comp_buff, 256, 1, compare) > 0) {
+					if (memcmp(comp_buff, buff, 256)) {
+						fprintf(stderr, "\nCheck mismatch at bank #%i, segment #%i\n", i, j);
+						return false;
+					}
+				} else {
+					fprintf(stderr, "\nInput file is shorter than cartridge data\n");
+					return false;
+				}
+			}
 		}
 	}
 
-	fprintf(stdout, "\nROM dump complete!\n");
+	if (fp)
+		fprintf(stdout, "\nROM dump complete!\n");
+	if (compare) {
+		fprintf(stdout, "\nROM file matches cartridge data\n");
+		if (ftell(compare) != (fseek(compare, 0, SEEK_END), ftell(compare)))
+			fprintf(stdout, "Warning: Input file contains additional data\n");
+	}
+
 	return true;
 
 	read_error:
