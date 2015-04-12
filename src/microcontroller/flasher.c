@@ -62,15 +62,15 @@ void gbus_write(unsigned char data, unsigned char ale) {
 	PORTB = data;
 	PORTD |= ale;
 
-	PORTD &= ~PIN_WR;
-	PORTD &= ~PIN_WR;
-	PORTD &= ~PIN_WR;
-	PORTD &= ~PIN_WR;
-	PORTD |= PIN_WR;
-	PORTD |= PIN_WR;
-	PORTD |= PIN_WR;
-	PORTD |= PIN_WR;
-	PORTD &= (~ale);
+	if (!ale) {
+		PORTD &= ~PIN_WR;
+		PORTD &= ~PIN_WR;
+		PORTD &= ~PIN_WR;
+		PORTD &= ~PIN_WR;
+		PORTD |= PIN_WR;
+	} else {
+		PORTD &= (~ale);
+	}
 
 	/* Set data port as input */
 	DDRB = 0;
@@ -94,8 +94,8 @@ void gbus_set_bank(unsigned char bank) {
 }
 
 void gbus_enable_sram() {
-	PORTD &= (~PIN_CS);
 	gbus_write_addr_high(0xFF);
+	PORTD &= (~PIN_CS);
 }
 
 void gbus_disable_sram() {
@@ -137,6 +137,7 @@ int main(void) {
 	DDRD = 0x7C;
 	PORTD = 0x64;
 	/* Bit 0 used for busy LED, bit 1 for locked LED */
+	/* Bit 0 could control AUDIO_OUT, bit 1 also controls ~RESET */
 	DDRA = 0x3;
 	PORTA = 0;
 
@@ -204,6 +205,7 @@ int main(void) {
 				gbus_set_bank(addr_bank);
 				break;
 			case CMD_CHECK_VALID:
+				/* Checks the signature for an SST39SF040 flash chip */
 				flash_write_command(0x90);
 				gbus_set_bank(0);
 				gbus_write_addr_high(0);
